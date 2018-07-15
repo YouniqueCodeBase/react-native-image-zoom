@@ -41,6 +41,8 @@ export default class ImageViewer extends React.Component<Props, State> {
   private zoomLastDistance: number | null = null;
   private zoomCurrentDistance = 0;
 
+  private velocityThresholdReached = false;
+
   // 图片手势处理
   private imagePanResponder: PanResponderInstance | null = null;
 
@@ -189,6 +191,19 @@ export default class ImageViewer extends React.Component<Props, State> {
         }
       },
       onPanResponderMove: (evt, gestureState) => {
+
+        // enables closing by the speed of the swipe down not only by the distance moved.
+        if (this.props.enableVelocitySwipeDown && this.props.velocityThreshold) {
+          if (gestureState.vy > this.props.velocityThreshold) {
+            this.velocityThresholdReached = true;
+          }
+
+          // when the user wants to stop the closing
+          if (gestureState.vy <= 0.1){
+            this.velocityThresholdReached = false;
+          }
+        }
+
         if (this.isDoubleClick) {
           // 有时双击会被当做位移，这里屏蔽掉
           return;
@@ -223,8 +238,8 @@ export default class ImageViewer extends React.Component<Props, State> {
             if (this.swipeDownOffset === 0) {
               if (Math.abs(diffX) > Math.abs(diffY)) {
                 this.isHorizontalWrap = true;
+                console.log(Math.abs(diffX) > Math.abs(diffY));
               }
-
               // diffX > 0 表示手往右滑，图往左移动，反之同理
               // horizontalWholeOuterCounter > 0 表示溢出在左侧，反之在右侧，绝对值越大溢出越多
               if (this.props.imageWidth * this.scale > this.props.cropWidth) {
@@ -425,6 +440,7 @@ export default class ImageViewer extends React.Component<Props, State> {
         this.imageDidMove('onPanResponderMove');
       },
       onPanResponderRelease: (evt, gestureState) => {
+
         // 取消长按
         if (this.longPressTimeout) {
           clearTimeout(this.longPressTimeout);
@@ -472,6 +488,11 @@ export default class ImageViewer extends React.Component<Props, State> {
   };
 
   public panResponderReleaseResolve = () => {
+
+    if(this.velocityThresholdReached && this.props.onSwipeDown){
+      this.props.onSwipeDown()
+    }
+
     // 判断是否是 swipeDown
     if (this.props.enableSwipeDown && this.props.swipeDownThreshold) {
       if (this.swipeDownOffset > this.props.swipeDownThreshold) {

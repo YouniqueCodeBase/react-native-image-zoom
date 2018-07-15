@@ -80,6 +80,17 @@ export class Props {
   public swipeDownThreshold?: number = 230;
 
   /**
+   * threshold for firing swipe down function depending on velocity
+   */
+  public velocityThreshold?: number = 0.8;
+
+  /**
+   * for enabling swipe down depending on velocity
+   */
+  public enableVelocitySwipeDown?: boolean = false;
+
+
+  /**
    * for enabling vertical movement if user doesn't want it
    */
   public enableSwipeDown?: boolean = false;
