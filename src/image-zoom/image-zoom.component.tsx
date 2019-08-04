@@ -12,15 +12,6 @@ import {
 import styles from './image-zoom.style';
 import { ICenterOn, Props, State } from './image-zoom.type';
 
-const isMobile = () => {
-  if (Platform.OS === ('web' as PlatformOSType)) {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  } else {
-    return true;
-  }
-};
-
-//
 export default class ImageViewer extends React.Component<Props, State> {
   public static defaultProps = new Props();
   public state = new State();
@@ -88,7 +79,7 @@ export default class ImageViewer extends React.Component<Props, State> {
   public componentWillMount() {
     this.imagePanResponder = PanResponder.create({
       // 要求成为响应者：
-      onStartShouldSetPanResponder: () => isMobile(),
+      onStartShouldSetPanResponder: () => true,
       onPanResponderTerminationRequest: () => false,
 
       onPanResponderGrant: evt => {
@@ -145,46 +136,49 @@ export default class ImageViewer extends React.Component<Props, State> {
 
             // 缩放
             this.isDoubleClick = true;
-            if (this.scale > 1 || this.scale < 1) {
-              // 回归原位
-              this.scale = 1;
 
-              this.positionX = 0;
-              this.positionY = 0;
-            } else {
-              // 开始在位移地点缩放
-              // 记录之前缩放比例
-              // 此时 this.scale 一定为 1
-              const beforeScale = this.scale;
+            if (this.props.enableDoubleClickZoom) {
+              if (this.scale > 1 || this.scale < 1) {
+                // 回归原位
+                this.scale = 1;
 
-              // 开始缩放
-              this.scale = 2;
+                this.positionX = 0;
+                this.positionY = 0;
+              } else {
+                // 开始在位移地点缩放
+                // 记录之前缩放比例
+                // 此时 this.scale 一定为 1
+                const beforeScale = this.scale;
 
-              // 缩放 diff
-              const diffScale = this.scale - beforeScale;
-              // 找到两手中心点距离页面中心的位移
-              // 移动位置
-              this.positionX = ((this.props.cropWidth / 2 - this.doubleClickX) * diffScale) / this.scale;
+                // 开始缩放
+                this.scale = 2;
 
-              this.positionY = ((this.props.cropHeight / 2 - this.doubleClickY) * diffScale) / this.scale;
+                // 缩放 diff
+                const diffScale = this.scale - beforeScale;
+                // 找到两手中心点距离页面中心的位移
+                // 移动位置
+                this.positionX = ((this.props.cropWidth / 2 - this.doubleClickX) * diffScale) / this.scale;
+
+                this.positionY = ((this.props.cropHeight / 2 - this.doubleClickY) * diffScale) / this.scale;
+              }
+
+              this.imageDidMove('centerOn');
+
+              Animated.parallel([
+                Animated.timing(this.animatedScale, {
+                  toValue: this.scale,
+                  duration: 100
+                }),
+                Animated.timing(this.animatedPositionX, {
+                  toValue: this.positionX,
+                  duration: 100
+                }),
+                Animated.timing(this.animatedPositionY, {
+                  toValue: this.positionY,
+                  duration: 100
+                })
+              ]).start();
             }
-
-            this.imageDidMove('centerOn');
-
-            Animated.parallel([
-              Animated.timing(this.animatedScale, {
-                toValue: this.scale,
-                duration: 100
-              }),
-              Animated.timing(this.animatedPositionX, {
-                toValue: this.positionX,
-                duration: 100
-              }),
-              Animated.timing(this.animatedPositionY, {
-                toValue: this.positionY,
-                duration: 100
-              })
-            ]).start();
           } else {
             this.lastClickTime = new Date().getTime();
           }
@@ -459,10 +453,12 @@ export default class ImageViewer extends React.Component<Props, State> {
         // 如果是单个手指、距离上次按住大于预设秒、滑动距离小于预设值, 则可能是单击（如果后续双击间隔内没有开始手势）
         // const stayTime = new Date().getTime() - this.lastTouchStartTime!
         const moveDistance = Math.sqrt(gestureState.dx * gestureState.dx + gestureState.dy * gestureState.dy);
+        const { locationX, locationY, pageX, pageY } = evt.nativeEvent;
+
         if (evt.nativeEvent.changedTouches.length === 1 && moveDistance < (this.props.clickDistance || 0)) {
           this.singleClickTimeout = setTimeout(() => {
             if (this.props.onClick) {
-              this.props.onClick();
+              this.props.onClick({ locationX, locationY, pageX, pageY });
             }
           }, this.props.doubleClickInterval);
         } else {
@@ -690,7 +686,7 @@ export default class ImageViewer extends React.Component<Props, State> {
         }}
         {...this.imagePanResponder!.panHandlers}
       >
-        <Animated.View style={animateConf}>
+        <Animated.View style={animateConf} renderToHardwareTextureAndroid>
           <View
             onLayout={this.handleLayout.bind(this)}
             style={{

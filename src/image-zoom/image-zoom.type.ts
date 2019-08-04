@@ -15,6 +15,13 @@ interface IOnMove {
   zoomCurrentDistance: number;
 }
 
+export interface IOnClick {
+  locationX: number,
+  locationY: number,
+  pageX: number,
+  pageY: number
+}
+
 export class Props {
   /**
    * 操作区域宽度
@@ -45,6 +52,11 @@ export class Props {
    * 多手指是否能缩放
    */
   public pinchToZoom?: boolean = true;
+
+  /**
+   * 双击能否放大
+   */
+  public enableDoubleClickZoom?: boolean = true;
 
   /**
    * 单击最大位移
@@ -113,7 +125,7 @@ export class Props {
   /**
    * 单击的回调
    */
-  public onClick?: () => void = () => {
+  public onClick?: (eventParams: IOnClick) => void = () => {
     //
   };
 
